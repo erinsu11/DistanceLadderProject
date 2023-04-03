@@ -1,0 +1,265 @@
+# First section adapted from tutorial code
+
+import numpy as np 
+import matplotlib 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
+from scipy.stats import sem
+from tqdm import tqdm 
+import os 
+import pandas as pd 
+from astropy.timeseries import LombScargle
+
+# Configuring notebook for plotting
+%matplotlib inline
+
+mpl.style.use('seaborn-colorblind')
+
+# Default plot settings
+matplotlib.rcParams['image.origin'] = 'lower'
+matplotlib.rcParams['figure.figsize']=(8.0,6.0)   
+matplotlib.rcParams['font.size']=16              
+matplotlib.rcParams['savefig.dpi']= 300             
+
+import warnings
+warnings.filterwarnings('ignore')
+
+# Directory - location of unzipped 
+ddir_stars = '/Users/erinsullivan/Downloads/universe_6-2/'
+ddir = ddir_stars + '/Variable_Star_Data/'
+
+fname = 'TopS182810.csv' # Star name
+
+# Reading CSV
+data = pd.read_csv(ddir+fname) 
+time = data['Time']   
+flux = data['NormalisedFlux']
+dt = np.median(np.diff(time))
+print('Nyquist Limit',0.5/dt,'cycles per hour') 
+
+plt.plot(time,flux,'.'"", markersize=16)
+plt.xlabel('Time (hours)')
+plt.ylabel('Relative Flux')
+
+pd.DataFrame(fnames).to_csv("/Users/erinsullivan/Downloads/universe_6/names.csv")
+
+
+freqs = np.linspace(1/100,0.45,10000) # Frequency grid should not go higher than Nyquist limit
+periods = [] # Empty list for period
+
+fig, axes = plt.subplots(3,4,figsize=(18,12))
+for fname, ax in zip(fnames[:12], axes.ravel()): 
+    data = pd.read_csv(fname) # read CSV
+    time = data['Time']       # Extracting the columns as variables
+    flux = data['NormalisedFlux']
+
+    LS = LombScargle(time,flux) # Initialize a Lomb Scargle
+    power = LS.power(freqs) # Calculating LS power 
+    bestfreq = freqs[np.argmax(power)] # Frequency with highest LS power
+    
+    pred = LS.model(time,bestfreq) # Sine wave prediction at the best frequency
+    ax.plot(time,flux,'.')
+    ax.plot(time,pred) # Plotting
+    
+    periods.append(1/bestfreq) # Adding each period to the list
+    
+periods = np.array(periods) # Turning list into to an array
+
+
+
+import glob
+import os
+
+variables = pd.DataFrame({'Name':names,
+              'Period':periods}) 
+variables.Name = variables.Name.astype('|S') 
+
+all_star_files = glob.glob(ddir_stars+'*/Star_Data.csv')
+
+all_stars = pd.concat([pd.read_csv(table) for table in all_star_files]) # Concatenating a list of dataframes
+
+all_stars.Name = all_stars.Name.astype('|S') 
+all_stars = all_stars[all_stars.Parallax > 0.01] # 10 mas parallax cut
+print(len(all_stars),'stars above 10 mas parallax')
+
+variables = pd.merge(all_stars,variables,on='Name') # Merging these two arrays according to the keyword 'name'
+print('Of which',len(variables),'variables') # Cutting down to a small list
+
+#  Log scales for magnitude
+m0, m1, m2 = np.log10(all_stars['BlueF']), np.log10(all_stars['GreenF']), np.log10(all_stars['RedF']) 
+colour = m2-m0
+abs_mag = m1 + 2*np.log10(1./all_stars.Parallax) 
+
+v0, v1, v2 = np.log10(variables['BlueF']), np.log10(variables['GreenF']), np.log10(variables['RedF']) 
+variable_colour = v2-v0
+abs_mag_v = v1 + 2*np.log10(1./variables.Parallax)
+
+# Plotting period against log flux
+plt.plot(variables.Period,abs_mag_v,'.',color='C3')
+plt.grid()
+plt.xlabel('Period (hours)')
+plt.ylabel('Log Flux');
+plt.xlim([15, 60])
+
+
+# Fitting lines 
+
+# There are two classes of variable stars (long period and short period)
+variables.Period_Short = variables[variables['Period'] < 30]
+variables.Period_Long = variables[variables['Period'] > 30]
+abs_mag_v_Short = abs_mag_v[(abs_mag_v <= -7.5)]
+abs_mag_v_Long = abs_mag_v[(abs_mag_v > -7.5)]
+
+# Merge short periods with corresponding short log flux
+variables.Period_Short = pd.merge(variables.Period_Short, pd.DataFrame(abs_mag_v_Short, columns=['abs_mag_v']), left_index=True, right_index=True)
+
+# Merge long periods with corresponding long log flux
+variables.Period_Long = pd.merge(variables.Period_Long, pd.DataFrame(abs_mag_v_Long, columns=['abs_mag_v']), left_index=True, right_index=True)
+
+# Creating two different csvs for the two classes
+variables.Period_Short.to_csv('ShortPeriod.csv', index=False)
+variables.Period_Long.to_csv('LongPeriod.csv', index=False)
+
+# Fitting a line to long period variable stars
+data = pd.read_csv(ddir_stars + 'LongPeriod.csv')
+data = data.dropna()
+
+periods = data['Period'].values
+log_flux = data['abs_mag_v'].values
+
+plt.scatter(periods, log_flux, color='black', alpha=0.5)
+
+X = periods.reshape((-1, 1))
+y = log_flux
+model = LinearRegression().fit(X, y)
+
+slope = model.coef_[0]
+intercept = model.intercept_
+
+x_line = np.linspace(np.min(periods), np.max(periods), 100)
+y_line = slope * x_line + intercept
+plt.plot(x_line, y_line, color='red')
+
+# Monte carlo uncertainty
+n_samp = 1000
+slopes = []
+intercepts = []
+
+for _ in range(n_samp):
+    indices = np.random.choice(len(periods), size=len(periods), replace=True)
+    X_samp = periods[indices].reshape((-1, 1))
+    Y_samp = log_flux[indices]
+
+    model_samp = LinearRegression().fit(X_samp, Y_samp)
+    slopes.append(model_samp.coef_[0])
+    intercepts.append(model_samp.intercept_)
+
+slope_mean = np.mean(slopes)
+slope_std = np.std(slopes)
+intercept_mean = np.mean(intercepts)
+intercept_std = np.std(intercepts)
+
+# Uncertainty overlay
+alpha = 0.08
+n_lines = 100
+line_indices = np.random.choice(n_samples, n_lines)
+
+for i in line_indices:
+    y_line_samp = slopes[i] * x_line + intercepts[i]
+    plt.plot(x_line, y_line_samp, color='C3', alpha=alpha)
+
+# Plotting period against log flux with linear equation of best fit
+plt.xlabel('Period (hours)')
+plt.ylabel('Log Flux')
+
+print(f'Slope: {slope_mean:.2f} ± {slope_std:.2f}')
+print(f'Intercept: {intercept_mean:.2f} ± {intercept_std:.2f}')
+
+plt.figure()
+plt.hist(slopes, bins=30, alpha=0.5, label='Slopes')
+plt.axvline(slope, color='red', label='True slope')
+plt.legend()
+plt.xlabel('Slope')
+plt.ylabel('Frequency')
+
+plt.figure()
+plt.hist(intercepts, bins=30, alpha=0.5, label='Intercepts')
+plt.axvline(intercept, color='red', label='True intercept')
+plt.legend()
+plt.xlabel('Intercept')
+plt.ylabel('Frequency')
+plt.show()
+
+
+# Fitting a line to short period variable stars
+data = pd.read_csv(ddir_stars + 'ShortPeriod.csv')
+data = data.dropna()
+
+periods = data['Period'].values
+log_flux = data['abs_mag_v'].values
+
+plt.scatter(periods, log_flux, color='black', alpha=0.5)
+
+X = periods.reshape((-1, 1))
+Y = log_flux
+model = LinearRegression().fit(X, Y)
+
+
+slope = model.coef_[0]
+intercept = model.intercept_
+
+x_line = np.linspace(np.min(periods), np.max(periods), 100)
+y_line = slope * x_line + intercept
+plt.plot(x_line, y_line, color='red')
+
+# Monte carlo uncertainty
+n_samp = 1000
+slopes = []
+intercepts = []
+
+for _ in range(n_samp):
+    indices = np.random.choice(len(periods), size=len(periods), replace=True)
+    X_samp = periods[indices].reshape((-1, 1))
+    y_samp = log_flux[indices]
+
+    model_samp = LinearRegression().fit(X_sample, y_sample)
+    slopes.append(model_samp.coef_[0])
+    intercepts.append(model_samp.intercept_)
+
+slope_mean = np.mean(slopes)
+slope_std = np.std(slopes)
+intercept_mean = np.mean(intercepts)
+intercept_std = np.std(intercepts)
+
+
+# Uncertainty overlay
+alpha = 0.08
+n_lines = 100
+line_indices = np.random.choice(n_samples, n_lines)
+
+for i in line_indices:
+    y_line_samp = slopes[i] * x_line + intercepts[i]
+    plt.plot(x_line, y_line_samp, color='C3', alpha=alpha)
+
+# Plotting period against log flux with linear equation of best fit
+plt.xlabel('Period (hours)')
+plt.ylabel('Log Flux')
+
+print(f'Slope: {slope_mean:.2f} ± {slope_std:.2f}')
+print(f'Intercept: {intercept_mean:.2f} ± {intercept_std:.2f}')
+
+plt.figure()
+plt.hist(slopes, bins=30, alpha=0.5, label='Slopes')
+plt.axvline(slope, color='red', label='True slope')
+plt.legend()
+plt.xlabel('Slope')
+plt.ylabel('Frequency')
+
+plt.figure()
+plt.hist(intercepts, bins=30, alpha=0.5, label='Intercepts')
+plt.axvline(intercept, color='red', label='True intercept')
+plt.legend()
+plt.xlabel('Intercept')
+plt.ylabel('Frequency')
+plt.show()
