@@ -4,7 +4,7 @@ import numpy as np
 
 # Load data from CSV file
 ddir = '/Users/erinsullivan/Desktop/universe_6/'
-data = pd.read_csv(ddir + "stardata.csv")
+data = pd.read_csv(ddir + "star_data.csv")
 
 
 # Extract columns for luminosity and temperature
