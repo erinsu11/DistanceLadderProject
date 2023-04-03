@@ -4,8 +4,8 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 # Reading in CSV
-ddir = '/Users/erinsullivan/Downloads/universe_6-2/'
-data = pd.read_csv(ddir + "star_data_with_luminosity_radii_and_uncertainties.csv")
+ddir = '/Users/erinsullivan/Desktop/universe_6/'
+data = pd.read_csv(ddir + "star_data.csv")
 
 # Extracting columns for equatorial and polar coordinates
 equatorial = data['Equat']
