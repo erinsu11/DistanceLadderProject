@@ -22,7 +22,7 @@ warnings.filterwarnings('ignore')
 
 
 # Directory 
-ddir = '/Users/erinsullivan/Downloads/universe_6/'
+ddir = '/Users/erinsullivan/Desktop/universe_6/'
 
 # Reading CSV
 stars = pd.read_csv(ddir+'Top/Star_Data.csv') 
