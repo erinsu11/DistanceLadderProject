@@ -1,0 +1,18 @@
+# Initialising variable
+d_parallax = []
+
+# Opening csv file
+with open(ddir + 'Converted Star Data.csv', 'r') as csvfile:
+    reader = csv.DictReader(csvfile)
+    
+    # Looping through each row
+    for row in reader:
+        # If parallax is greater than 0.007,
+        if 'Parallax' in row and float(row['Parallax']) > 0.007:
+            d = 1 / float(row['Parallax']) # Calculating distance 
+            d_parallax.append(d)                    # Appending distance to list
+
+
+print(max(d_parallax)) # Printing maximum distance 
+print(len(d_parallax)) # Essentially printing the number of stars which has parallax > 0.007 
+    
