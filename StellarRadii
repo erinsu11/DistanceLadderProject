@@ -37,20 +37,3 @@ plt.show()
 # Print the most frequent radius
 print(f"The most frequent radius is {most_frequent_radius:.2e} meters")
 
-
-hist, bins = np.histogram(temperature, bins=40, range=(0, 40000))
-
-# Finding bin with the highest frequency
-max_bin_index = np.argmax(hist)
-most_frequent_temperature = (bins[max_bin_index] + bins[max_bin_index + 1]) / 2
-
-
-# Plot histogram with the most frequent radius marked
-plt.hist(temperature, bins=40, color='palevioletred', alpha = 0.8, edgecolor='black')
-plt.axvline(most_frequent_temperature, color='black', linestyle='dashed', linewidth=2)
-plt.xlabel('Temperature (K)')
-plt.ylabel('Frequency')
-plt.show()
-
-# Print the most frequent radius
-print(f"The most frequent temperature is {most_frequent_temperature:.2e} K")
