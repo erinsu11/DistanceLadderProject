@@ -10,7 +10,7 @@ with open(ddir + 'Converted Star Data.csv', 'r') as csvfile:
         # If parallax is greater than 0.007,
         if 'Parallax' in row and float(row['Parallax']) > 0.007:
             d = 1 / float(row['Parallax']) # Calculating distance 
-            d_parallax.append(d)                    # Appending distance to list
+            d_parallax.append(d)           # Appending distance to list
 
 
 print(max(d_parallax)) # Printing maximum distance 
