@@ -26,7 +26,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # Directory - location of unzipped 
-ddir_stars = '/Users/erinsullivan/Downloads/universe_6-2/'
+ddir_stars = '/Users/erinsullivan/Desktop/universe_6/'
 ddir = ddir_stars + '/Variable_Star_Data/'
 
 fname = 'TopS182810.csv' # Star name
