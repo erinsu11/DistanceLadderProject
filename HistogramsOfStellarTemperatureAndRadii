@@ -1,0 +1,56 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Load data from CSV file
+ddir = '/Users/erinsullivan/Desktop/universe_6/'
+data = pd.read_csv(ddir + "stardata.csv")
+
+
+# Extract columns for luminosity and temperature
+luminosity = data['Luminosity']   
+temperature = data['Temperature']
+
+# Drop any rows with NaN values
+data = data.dropna()
+
+# Stefan Boltzmann constant ( W / m^2 / K^4 )
+sigma = 5.67e-8  
+
+# Calculate radius using formula R = sqrt(L / (4*pi*sigma*T^4))  
+radius = np.sqrt(luminosities / (4 * np.pi * sigma * temperatures**4))
+
+
+hist, bins = np.histogram(radius, bins=40, range=(0, 0.2e10))
+
+# Finding bin with the highest frequency
+max_bin_index = np.argmax(hist)
+most_frequent_radius = (bins[max_bin_index] + bins[max_bin_index + 1]) / 2
+
+# Plot histogram with the most frequent radius marked
+plt.hist(radius, bins=40, range=(0, 0.2e10), color='palevioletred', alpha = 0.8, edgecolor='black')
+plt.axvline(most_frequent_radius, color='black', linestyle='dashed', linewidth=2)
+plt.xlabel('Radius (m)')
+plt.ylabel('Frequency')
+plt.show()
+
+# Print the most frequent radius
+print(f"The most frequent radius is {most_frequent_radius:.2e} meters")
+
+
+hist, bins = np.histogram(temperature, bins=40, range=(0, 40000))
+
+# Finding bin with the highest frequency
+max_bin_index = np.argmax(hist)
+most_frequent_temperature = (bins[max_bin_index] + bins[max_bin_index + 1]) / 2
+
+
+# Plot histogram with the most frequent radius marked
+plt.hist(temperature, bins=40, color='palevioletred', alpha = 0.8, edgecolor='black')
+plt.axvline(most_frequent_temperature, color='black', linestyle='dashed', linewidth=2)
+plt.xlabel('Temperature (K)')
+plt.ylabel('Frequency')
+plt.show()
+
+# Print the most frequent radius
+print(f"The most frequent temperature is {most_frequent_temperature:.2e} K")
