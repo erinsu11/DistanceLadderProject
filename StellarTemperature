@@ -1,1 +1,111 @@
+import statistics
+from numpy import *
+import os
+import pandas as pd
+import matplotlib
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+import logging
+import numpy as np
 
+logging.basicConfig(level=logging.INFO)
+
+# Defining planck function
+
+def planck_func(l, T, alpha): 
+    c = 4.702 * 10**(-15)      # 8 pi^2 * h * c^2
+    d = 0.01439                # h * c / k
+    funct = alpha * (c / (l)**5) * (1 / (exp(d / (l * T)) - 1))
+    return funct
+
+# Loading data from CSV file
+ddir = '/Users/erinsullivan/Desktop/universe_6/'
+stardata = pd.read_csv(ddir + "Star_Data.csv")
+
+# Extracting columns
+starLabel = stardata['Name']
+starRed = stardata['RedF']
+starGreen = stardata['GreenF']
+starBlue = stardata['BlueF']
+starDist = stardata['Distance']
+
+logging.debug(f"len(starRed) = {len(starRed)}")
+
+# Creating lists
+red, green, blue = 700 * 10**(-9), 500 * 10**(-9), 440 * 10**(-9)
+wavelength = array([red, green, blue], dtype=float64)
+colours = ["red", "green", "blue"]
+temps = []
+lowtemps = []
+names = []
+uncertainties = []
+plot_count=5 # Setting number of plots
+
+for index, star in enumerate(starRed):
+    distMult = (starDist[index] * 3.086 * 10**16)**2 
+    luminosity = array([starRed[index]*distMult, starGreen[index]*distMult, starBlue[index]*distMult], dtype=float64) # luminosity = flux * 4 * pi^2 * d^2  
+    plot_count = plot_count-1 # Decrease plot counter
+    #try:
+    fig, ax = plt.subplots()
+    starProps, params = curve_fit(planck_func, wavelength, luminosity, p0=[10000, 5 * 10**7])
+    starTemp, mult = starProps
+       
+    if starTemp < 200000:
+        names.append(starLabel[index])
+        temps.append(starTemp)
+        uncertainties.append(sqrt(diag(params))[0])
+    if starTemp < 50000:        
+        lowtemps.append(starTemp)   
+        
+    # Save names, temperatures and uncertainties to CSV 
+    data = {'Name': names, 'Temperature': temps, 'Uncertainty': uncertainties}
+    df = pd.DataFrame(data)
+    df.to_csv(ddir + 'temperature_uncertainties.csv', index=False)
+
+
+    if plot_count >= 0: # Condition to plot
+        l = arange(10*10**(-9), 1300*10**(-9), 900*10**(-9) / 50)
+        c = 4.702 * 10**(-15)   # 8 pi^2 * h * c^2
+        d = 0.01439             # h * c / k
+        planck = mult * (c / (l)**5) * (1 / (exp(d / (l * starTemp)) - 1))
+        plt.plot(l * 10**9, planck, c='k', linewidth=0.7) 
+            
+        for i in range(0,3):
+            plt.scatter(wavelength[i] * 10**9, luminosity[i], c=colours[i], s=10)
+            plt.errorbar(wavelength[i] * 10**9, luminosity[i], yerr=0.015*luminosity[i], linewidth=1, fmt=',', c=colours[i])
+            ax.set_xlabel("Wavelength (nm)")
+            ax.set_ylabel("Specific Luminosity (W.nm$^{-1}$)")
+            ax.ticklabel_format(axis='x', style='scientific', useMathText=True)
+            fig.savefig(ddir+f'\\Blackbody Curves\\{stardata["Name"][index]}-T{round(stardata["Temperature"][index])}.png')
+        plt.show()    
+    
+    else:
+        matplotlib.pyplot.close()
+
+
+print("ending")
+
+
+# Creating histogram
+
+# Load data from CSV file
+data = pd.read_csv(ddir + 'temperature_uncertainties.csv')
+
+temp = data['Temperature'] 
+
+hist, bins = np.histogram(temp, bins=90, range=(0, 35000))
+
+# Finding bin with the highest frequency
+max_bin_index = np.argmax(hist)
+most_frequent_temp = (bins[max_bin_index] + bins[max_bin_index + 1]) / 2
+
+
+plt.hist(temp, bins=90)
+plt.xlabel('Temperature (K)')
+plt.ylabel('Count')
+plt.axvline(most_frequent_temp, color='black', linestyle='dashed', linewidth=2)
+plt.savefig(ddir + 'temperatures_histogram.png')
+
+
+# Printing the most frequent temperature
+print(f"The most frequent temperature is {most_frequent_temp:.2e} K")
